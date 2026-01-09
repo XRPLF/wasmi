@@ -1,4 +1,5 @@
-use alloc::{boxed::Box, string::String};
+use crate::wasm_name_t;
+use alloc::{boxed::Box, string::String, vec::Vec};
 use core::ffi;
 use wasmi::Error;
 
@@ -49,4 +50,17 @@ pub(crate) fn handle_result<T>(
         }
         Err(error) => Some(Box::new(wasmi_error_t::from(error))),
     }
+}
+
+/// Returns the error message of the [`wasmi_error_t`].
+///
+/// Stores the returned error message in `out`.
+#[cfg_attr(not(feature = "prefix-symbols"), no_mangle)]
+#[cfg_attr(feature = "prefix-symbols", wasmi_c_api_macros::prefix_symbol)]
+pub extern "C" fn wasmi_error_message(error: &wasmi_error_t, out: &mut wasm_name_t) {
+    let mut buffer = Vec::new();
+    buffer.extend_from_slice(format!("{:?}", error.inner).as_bytes());
+    buffer.reserve_exact(1);
+    buffer.push(0);
+    out.set_buffer(buffer.into());
 }

@@ -1,7 +1,7 @@
 use crate::{wasm_engine_t, wasmi_error_t, ForeignData};
 use alloc::{boxed::Box, sync::Arc};
 use core::{cell::UnsafeCell, ffi};
-use wasmi::{AsContext, AsContextMut, Store, StoreContext, StoreContextMut};
+use wasmi::{AsContext, AsContextMut, Store, StoreContext, StoreContextMut, StoreLimits, StoreLimitsBuilder};
 
 /// This representation of a `Store` is used to implement the `wasm.h` API (and
 /// *not* the `wasmi.h` API!)
@@ -16,7 +16,7 @@ use wasmi::{AsContext, AsContextMut, Store, StoreContext, StoreContextMut};
 /// least Wasmi's implementation).
 #[derive(Clone)]
 pub struct WasmStoreRef {
-    inner: Arc<UnsafeCell<Store<()>>>,
+    inner: Arc<UnsafeCell<Store<StoreLimits>>>,
 }
 
 impl WasmStoreRef {
@@ -27,7 +27,7 @@ impl WasmStoreRef {
     /// # Safety
     ///
     /// It is the callers responsibility to provide a valid `self`.
-    pub unsafe fn context(&self) -> StoreContext<'_, ()> {
+    pub unsafe fn context(&self) -> StoreContext<'_, StoreLimits> {
         (*self.inner.get()).as_context()
     }
 
@@ -38,7 +38,7 @@ impl WasmStoreRef {
     /// # Safety
     ///
     /// It is the callers responsibility to provide a valid `self`.
-    pub unsafe fn context_mut(&mut self) -> StoreContextMut<'_, ()> {
+    pub unsafe fn context_mut(&mut self) -> StoreContextMut<'_, StoreLimits> {
         (*self.inner.get()).as_context_mut()
     }
 }
@@ -56,17 +56,71 @@ pub struct wasm_store_t {
 
 wasmi_c_api_macros::declare_own!(wasm_store_t);
 
-/// Creates a new [`Store<()>`](wasmi::Store) for the given `engine`.
+/// Creates a new [`Store<StoreLimits>`](wasmi::Store) for the given `engine`.
+///
+/// The store is created with no resource limits (original behavior).
+/// For memory-limited stores, use [`wasm_store_new_with_memory_max_pages`].
 ///
 /// The returned [`wasm_store_t`] must be freed using [`wasm_store_delete`].
 ///
-/// Wraps [`<wasmi::Store<()>>::new`](wasmi::Store::new).
+/// Wraps [`<wasmi::Store<StoreLimits>>::new`](wasmi::Store::new).
 #[cfg_attr(not(feature = "prefix-symbols"), no_mangle)]
 #[allow(clippy::arc_with_non_send_sync)]
 #[cfg_attr(feature = "prefix-symbols", wasmi_c_api_macros::prefix_symbol)]
 pub extern "C" fn wasm_store_new(engine: &wasm_engine_t) -> Box<wasm_store_t> {
     let engine = &engine.inner;
-    let store = Store::new(engine, ());
+
+    // Create store with no resource limits (original behavior)
+    let limits = StoreLimitsBuilder::new().build();
+    let store = Store::new(engine, limits);
+
+    Box::new(wasm_store_t {
+        inner: WasmStoreRef {
+            inner: Arc::new(UnsafeCell::new(store)),
+        },
+    })
+}
+
+/// Creates a new [`Store<StoreLimits>`](wasmi::Store) for the given `engine` with memory limits.
+///
+/// This function creates a store with resource limits suitable for blockchain smart contracts.
+/// The memory limit is enforced during WebAssembly execution.
+///
+/// If `max_pages` exceeds 1024 (64MB), this function will panic.
+///
+/// The returned [`wasm_store_t`] must be freed using [`wasm_store_delete`].
+///
+/// Wraps [`<wasmi::Store<StoreLimits>>::new`](wasmi::Store::new).
+#[cfg_attr(not(feature = "prefix-symbols"), no_mangle)]
+#[allow(clippy::arc_with_non_send_sync)]
+#[cfg_attr(feature = "prefix-symbols", wasmi_c_api_macros::prefix_symbol)]
+pub extern "C" fn wasm_store_new_with_memory_max_pages(
+    engine: &wasm_engine_t,
+    max_pages: u32,
+) -> Box<wasm_store_t> {
+    // Validate max_pages limit (64MB = 1024 pages)
+    if max_pages > 1024 {
+        panic!("max_pages ({}) exceeds maximum allowed value of 1024 pages (64MB)", max_pages);
+    }
+
+    // Convert pages to bytes (each page is 64KB)
+    let max_memory_bytes = (max_pages as usize) * (64 * 1024);
+
+    // Create store limits with blockchain-suitable defaults
+    let limits = StoreLimitsBuilder::new()
+        .memory_size(max_memory_bytes) // User-specified memory limit
+        .instances(1) // Single instance for blockchain
+        .tables(1) // Single table for blockchain
+        .memories(1) // Single memory for blockchain
+        .table_elements(64) // Limited table elements for blockchain
+        .trap_on_grow_failure(false) // Return -1 on growth failure instead of trapping
+        .build();
+
+    let mut store = Store::new(&engine.inner, limits);
+
+    // Install the resource limiter
+    store.limiter(|limits| limits);
+
     Box::new(wasm_store_t {
         inner: WasmStoreRef {
             inner: Arc::new(UnsafeCell::new(store)),
@@ -174,4 +228,41 @@ pub extern "C" fn wasmi_context_set_fuel(
     fuel: u64,
 ) -> Option<Box<wasmi_error_t>> {
     crate::handle_result(store.set_fuel(fuel), |()| {})
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////
+
+/// Returns the current fuel of the wasm store context in `fuel`.
+///
+/// Wraps [`Store::get_fuel`].
+///
+/// # Errors
+///
+/// If [`Store::get_fuel`] errors.
+#[no_mangle]
+pub extern "C" fn wasm_store_get_fuel(
+    store: &wasm_store_t,
+    fuel: &mut u64,
+) -> Option<Box<wasmi_error_t>> {
+    let context = unsafe { store.inner.context() };
+    crate::handle_result(context.get_fuel(), |amt| {
+        *fuel = amt;
+    })
+}
+
+/// Sets the current fuel of the wasm store context to `fuel`.
+///
+/// Wraps [`Store::set_fuel`].
+///
+/// # Errors
+///
+/// If [`Store::set_fuel`] errors.
+#[no_mangle]
+pub extern "C" fn wasm_store_set_fuel(
+    store: &mut wasm_store_t,
+    fuel: u64,
+) -> Option<Box<wasmi_error_t>> {
+    let mut context = unsafe { store.inner.context_mut() };
+    crate::handle_result(context.set_fuel(fuel), |()| {})
 }

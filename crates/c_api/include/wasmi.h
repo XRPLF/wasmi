@@ -10,18 +10,18 @@
 /**
  * \brief Wasmi version string.
  */
-#define WASMI_VERSION "0.35.0"
+#define WASMI_VERSION "1.0.6"
 /**
  * \brief Wasmi major version number.
  */
-#define WASMI_VERSION_MAJOR 0
+#define WASMI_VERSION_MAJOR 1
 /**
  * \brief Wasmi minor version number.
  */
-#define WASMI_VERSION_MINOR 35
+#define WASMI_VERSION_MINOR 0
 /**
  * \brief Wasmi patch version number.
  */
-#define WASMI_VERSION_PATCH 0
+#define WASMI_VERSION_PATCH 6
 
 #endif // WASMI_H
