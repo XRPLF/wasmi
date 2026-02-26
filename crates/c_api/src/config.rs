@@ -1,5 +1,5 @@
 use alloc::boxed::Box;
-use wasmi::{CompilationMode, Config};
+use wasmi::{CompilationMode, Config, EnforcedLimits};
 
 /// The Wasm configuration.
 ///
@@ -111,6 +111,68 @@ pub extern "C" fn wasmi_config_wasm_extended_const_set(c: &mut wasm_config_t, en
     c.inner.wasm_extended_const(enable);
 }
 
+/// Enables or disables support for the Wasm [`multi-memory`] proposal.
+///
+/// Wraps [`wasmi::Config::wasm_multi_memory`]
+///
+/// [`multi-memory`]: <https://github.com/WebAssembly/multi-memory>
+#[no_mangle]
+pub extern "C" fn wasmi_config_wasm_multi_memory_set(c: &mut wasm_config_t, enable: bool) {
+    c.inner.wasm_multi_memory(enable);
+}
+
+/// Enables or disables support for the Wasm [`custom-page-sizes`] proposal.
+///
+/// Wraps [`wasmi::Config::wasm_custom_page_sizes`]
+///
+/// [`custom-page-sizes`]: <https://github.com/WebAssembly/custom-page-sizes>
+#[no_mangle]
+pub extern "C" fn wasmi_config_wasm_custom_page_sizes_set(c: &mut wasm_config_t, enable: bool) {
+    c.inner.wasm_custom_page_sizes(enable);
+}
+
+/// Enables or disables support for the Wasm [`memory64`] proposal.
+///
+/// Wraps [`wasmi::Config::wasm_memory64`]
+///
+/// [`memory64`]: <https://github.com/WebAssembly/memory64>
+#[no_mangle]
+pub extern "C" fn wasmi_config_wasm_memory64_set(c: &mut wasm_config_t, enable: bool) {
+    c.inner.wasm_memory64(enable);
+}
+
+/// Enables or disables support for the Wasm [`wide-arithmetic`] proposal.
+///
+/// Wraps [`wasmi::Config::wasm_wide_arithmetic`]
+///
+/// [`wide-arithmetic`]: <https://github.com/WebAssembly/wide-arithmetic>
+#[no_mangle]
+pub extern "C" fn wasmi_config_wasm_wide_arithmetic_set(c: &mut wasm_config_t, enable: bool) {
+    c.inner.wasm_wide_arithmetic(enable);
+}
+
+/// Enables or disables support for the Wasm [`simd`] proposal.
+///
+/// Wraps [`wasmi::Config::wasm_simd`]
+///
+/// [`simd`]: <https://github.com/WebAssembly/simd>
+#[cfg(feature = "simd")]
+#[no_mangle]
+pub extern "C" fn wasmi_config_wasm_simd_set(c: &mut wasm_config_t, enable: bool) {
+    c.inner.wasm_simd(enable);
+}
+
+/// Enables or disables support for the Wasm [`relaxed-simd`] proposal.
+///
+/// Wraps [`wasmi::Config::wasm_relaxed_simd`]
+///
+/// [`relaxed-simd`]: <https://github.com/WebAssembly/relaxed-simd>
+#[cfg(feature = "simd")]
+#[no_mangle]
+pub extern "C" fn wasmi_config_wasm_relaxed_simd_set(c: &mut wasm_config_t, enable: bool) {
+    c.inner.wasm_relaxed_simd(enable);
+}
+
 /// Enables or disables support for floating point numbers for the config.
 ///
 /// Wraps [`wasmi::Config::floats`]
@@ -163,4 +225,112 @@ pub extern "C" fn wasmi_config_ignore_custom_sections_set(
     enable: bool,
 ) {
     config.inner.ignore_custom_sections(enable);
+}
+
+/// Sets the maximum recursion depth of the engine's stack during execution.
+///
+/// An execution traps if it exceeds this limit.
+///
+/// Wraps [`wasmi::Config::set_max_recursion_depth`]
+#[no_mangle]
+pub extern "C" fn wasmi_config_set_max_recursion_depth(
+    config: &mut wasm_config_t,
+    value: usize,
+) {
+    config.inner.set_max_recursion_depth(value);
+}
+
+/// Sets the minimum (or initial) height of the engine's value stack in bytes.
+///
+/// # Note
+///
+/// - Lower initial heights may improve memory consumption.
+/// - Higher initial heights may improve cold start times.
+///
+/// # Panics
+///
+/// If `value` is greater than the current maximum height of the value stack.
+///
+/// Wraps [`wasmi::Config::set_min_stack_height`]
+#[no_mangle]
+pub extern "C" fn wasmi_config_set_min_stack_height(config: &mut wasm_config_t, value: usize) {
+    config.inner.set_min_stack_height(value);
+}
+
+/// Sets the maximum height of the engine's value stack in bytes.
+///
+/// An execution traps if it exceeds this limit.
+///
+/// # Panics
+///
+/// If `value` is less than the current minimum height of the value stack.
+///
+/// Wraps [`wasmi::Config::set_max_stack_height`]
+#[no_mangle]
+pub extern "C" fn wasmi_config_set_max_stack_height(config: &mut wasm_config_t, value: usize) {
+    config.inner.set_max_stack_height(value);
+}
+
+/// Sets the maximum number of cached stacks for reuse.
+///
+/// # Note
+///
+/// - A higher value may improve execution performance.
+/// - A lower value may improve memory consumption.
+///
+/// Wraps [`wasmi::Config::set_max_cached_stacks`]
+#[no_mangle]
+pub extern "C" fn wasmi_config_set_max_cached_stacks(config: &mut wasm_config_t, value: usize) {
+    config.inner.set_max_cached_stacks(value);
+}
+
+/// Enforced limits for Wasm module parsing and compilation.
+///
+/// Wraps [`wasmi::EnforcedLimits`]
+#[repr(C)]
+#[derive(Clone)]
+pub struct wasmi_enforced_limits_t {
+    pub(crate) inner: EnforcedLimits,
+}
+
+wasmi_c_api_macros::declare_own!(wasmi_enforced_limits_t);
+
+/// Creates a new [`wasmi_enforced_limits_t`] with strict limits.
+///
+/// This set of strict enforced rules can be used to safeguard against
+/// malicious actors trying to attack the Wasmi compilation procedures.
+///
+/// The strict limits are:
+/// - max_globals: 1000
+/// - max_functions: 10,000
+/// - max_tables: 100
+/// - max_element_segments: 1000
+/// - max_memories: 1
+/// - max_data_segments: 1000
+/// - max_params: 32
+/// - max_results: 32
+/// - min_avg_bytes_per_function: 40 (enforced at 1000+ total bytes)
+///
+/// The returned [`wasmi_enforced_limits_t`] must be freed using
+/// [`wasmi_enforced_limits_delete`] or consumed by [`wasmi_config_enforced_limits_set`].
+///
+/// Wraps [`wasmi::EnforcedLimits::strict`]
+#[no_mangle]
+pub extern "C" fn wasmi_enforced_limits_strict() -> Box<wasmi_enforced_limits_t> {
+    Box::new(wasmi_enforced_limits_t {
+        inner: EnforcedLimits::strict(),
+    })
+}
+
+/// Sets the enforced limits for the config.
+///
+/// By default no limits are enforced.
+///
+/// Wraps [`wasmi::Config::enforced_limits`]
+#[no_mangle]
+pub extern "C" fn wasmi_config_enforced_limits_set(
+    config: &mut wasm_config_t,
+    limits: &wasmi_enforced_limits_t,
+) {
+    config.inner.enforced_limits(limits.inner);
 }

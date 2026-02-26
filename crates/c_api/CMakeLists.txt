@@ -6,6 +6,8 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(WASMI_ALWAYS_BUILD "If cmake should always invoke cargo to build Wasmi" ON)
 set(WASMI_TARGET "" CACHE STRING "Rust target to build for")
 
+add_compile_definitions(COMPILING_WASM_RUNTIME_API=1)
+
 if(NOT WASMI_TARGET)
     execute_process(
         COMMAND rustc -vV
@@ -43,6 +45,10 @@ endif()
 list(TRANSFORM WASMI_SHARED_FILES PREPEND ${WASMI_TARGET_DIR}/)
 list(TRANSFORM WASMI_STATIC_FILES PREPEND ${WASMI_TARGET_DIR}/)
 
+if(NOT BUILD_SHARED_LIBS)
+  set(WASMI_SHARED_FILES)
+endif()
+
 # Instructions on how to build and install the Wasmi Rust crate.
 find_program(WASMI_CARGO_BINARY cargo REQUIRED)
 include(ExternalProject)
@@ -79,7 +85,6 @@ else()
     target_link_libraries(wasmi INTERFACE ${WASMI_STATIC_FILES})
 
     if(WASMI_TARGET MATCHES "windows")
-        target_compile_options(wasmi INTERFACE -DWASM_API_EXTERN= -DWASI_API_EXTERN=)
         target_link_libraries(wasmi INTERFACE ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt)
     elseif(NOT WASMI_TARGET MATCHES "darwin")
         target_link_libraries(wasmi INTERFACE pthread dl m)
@@ -112,6 +117,7 @@ install(
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+if(BUILD_SHARED_LIBS)
 if(WASMI_TARGET MATCHES "darwin")
     set(INSTALLED_LIB "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libwasmi.dylib")
     install(
@@ -131,6 +137,7 @@ if(WASMI_TARGET MATCHES "darwin")
         install(CODE "execute_process(COMMAND ${install_name_tool_cmd})")
     endif()
 endif()
+endif()
 
 # Documentation Generation via Doxygen:
 set(DOXYGEN_CONF_IN ${CMAKE_CURRENT_SOURCE_DIR}/doxygen.conf.in)
@@ -140,20 +147,4 @@ add_custom_target(doc
     COMMAND doxygen ${DOXYGEN_CONF_OUT}
     DEPENDS ${WASMI_GENERATED_CONF_H} ${DOXYGEN_CONF_OUT}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-# C-Header Formatting via clang-format:
-find_program(CLANG_FORMAT clang-format REQUIRED)
-file(GLOB_RECURSE HEADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/wasmi.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/wasmi/*.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/wasmi/*.hh
-)
-add_custom_target(check-format
-    COMMAND ${CLANG_FORMAT} -style=llvm -Werror --dry-run ${HEADER_FILES}
-    COMMENT "clang-format: Check formatting for Wasmi C-API header files"
-)
-add_custom_target(format
-    COMMAND ${CLANG_FORMAT} -style=llvm -i ${HEADER_FILES}
-    COMMENT "clang-format: Apply formatting rules for Wasmi C-API header files"
 )

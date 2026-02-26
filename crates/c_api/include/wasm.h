@@ -13,8 +13,14 @@
 #include <assert.h>
 
 #ifndef WASM_API_EXTERN
-#if defined(_WIN32) && !defined(__MINGW32__) && !defined(LIBWASM_STATIC)
+#if defined(_MSC_BUILD)
+#if defined(COMPILING_WASM_RUNTIME_API)
+#define WASM_API_EXTERN __declspec(dllexport)
+#elif defined(_DLL)
 #define WASM_API_EXTERN __declspec(dllimport)
+#else
+#define WASM_API_EXTERN
+#endif
 #else
 #define WASM_API_EXTERN
 #endif
@@ -145,7 +151,13 @@ WASM_API_EXTERN own wasm_engine_t* wasm_engine_new_with_config(own wasm_config_t
 WASM_DECLARE_OWN(store)
 
 WASM_API_EXTERN own wasm_store_t* wasm_store_new(wasm_engine_t*);
+WASM_API_EXTERN own wasm_store_t* wasm_store_new_with_memory_max_pages(wasm_engine_t*, uint32_t max_pages);
 
+// Store fuel functions (forward declarations)
+struct wasmi_error;
+
+WASM_API_EXTERN struct wasmi_error* wasm_store_get_fuel(const wasm_store_t*, uint64_t* fuel);
+WASM_API_EXTERN struct wasmi_error* wasm_store_set_fuel(wasm_store_t*, uint64_t fuel);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Type Representations
