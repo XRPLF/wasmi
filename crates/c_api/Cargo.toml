@@ -30,4 +30,3 @@ doctest = false
 default = ["std"]
 std = []
 prefix-symbols = []
-simd = ["wasmi/simd"]

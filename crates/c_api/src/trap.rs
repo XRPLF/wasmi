@@ -111,7 +111,7 @@ impl HostError for HostTrap {}
 /// Discriminates the origin of a [`wasm_trap_t`]'s code returned by
 /// [`wasmi_trap_code`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u8)]
+#[repr(C)]
 pub enum wasmi_trap_kind_t {
     /// A trap code as defined by the WebAssembly specification.
     ///

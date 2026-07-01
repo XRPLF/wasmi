@@ -55,7 +55,7 @@ typedef enum wasmi_trap_code_enum {
 typedef enum wasmi_trap_kind_enum {
   /// The code is a WebAssembly specification trap (#wasmi_trap_code_enum).
   WASMI_TRAP_SPEC = 0,
-  /// The code is a host-defined code created via #wasmi_trap_new_code.
+  /// The code is a host-defined code created via #wasmi_trap_new_host_code.
   WASMI_TRAP_HOST = 1,
 } wasmi_trap_kind_t;
 

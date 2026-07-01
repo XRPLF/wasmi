@@ -150,7 +150,19 @@ WASM_API_EXTERN own wasm_engine_t* wasm_engine_new_with_config(own wasm_config_t
 
 WASM_DECLARE_OWN(store)
 
-WASM_API_EXTERN own wasm_store_t* wasm_store_new(wasm_engine_t*);
+// NOTE: `wasm_store_new` is intentionally NOT declared here.
+//
+// It creates a store with NO resource limiter installed, so memory/table
+// growth is bounded only by the module's own declared maximums (up to the
+// wasm32 address space), NOT by our page cap. Using it in a consensus/escrow
+// path removes our memory bound and opens a consensus/DoS hole.
+//
+// Always create stores via `wasm_store_new_with_memory_max_pages`, which
+// installs the resource limiter. The `wasm_store_new` symbol still exists in
+// the compiled library (so it remains linkable if hand-declared), but it is
+// deliberately kept out of this header to prevent accidental use.
+//
+// WASM_API_EXTERN own wasm_store_t* wasm_store_new(wasm_engine_t*);
 WASM_API_EXTERN own wasm_store_t* wasm_store_new_with_memory_max_pages(wasm_engine_t*, uint32_t max_pages);
 
 // Store fuel functions (forward declarations)
