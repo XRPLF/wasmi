@@ -6,6 +6,7 @@
 #include <wasmi/engine.h>
 #include <wasmi/error.h>
 #include <wasmi/store.h>
+#include <wasmi/trap.h>
 
 /**
  * \brief Wasmi version string.

@@ -18,6 +18,9 @@ links = "wasmi_c_api"
 wasmi = { workspace = true }
 wasmi_c_api_macros = { workspace = true }
 
+[dev-dependencies]
+wat = { workspace = true }
+
 [lib]
 name = "wasmi_c_api"
 test = false
