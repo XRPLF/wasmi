@@ -151,28 +151,6 @@ pub extern "C" fn wasmi_config_wasm_wide_arithmetic_set(c: &mut wasm_config_t, e
     c.inner.wasm_wide_arithmetic(enable);
 }
 
-/// Enables or disables support for the Wasm [`simd`] proposal.
-///
-/// Wraps [`wasmi::Config::wasm_simd`]
-///
-/// [`simd`]: <https://github.com/WebAssembly/simd>
-#[cfg(feature = "simd")]
-#[no_mangle]
-pub extern "C" fn wasmi_config_wasm_simd_set(c: &mut wasm_config_t, enable: bool) {
-    c.inner.wasm_simd(enable);
-}
-
-/// Enables or disables support for the Wasm [`relaxed-simd`] proposal.
-///
-/// Wraps [`wasmi::Config::wasm_relaxed_simd`]
-///
-/// [`relaxed-simd`]: <https://github.com/WebAssembly/relaxed-simd>
-#[cfg(feature = "simd")]
-#[no_mangle]
-pub extern "C" fn wasmi_config_wasm_relaxed_simd_set(c: &mut wasm_config_t, enable: bool) {
-    c.inner.wasm_relaxed_simd(enable);
-}
-
 /// Enables or disables support for floating point numbers for the config.
 ///
 /// Wraps [`wasmi::Config::floats`]
@@ -233,10 +211,7 @@ pub extern "C" fn wasmi_config_ignore_custom_sections_set(
 ///
 /// Wraps [`wasmi::Config::set_max_recursion_depth`]
 #[no_mangle]
-pub extern "C" fn wasmi_config_set_max_recursion_depth(
-    config: &mut wasm_config_t,
-    value: usize,
-) {
+pub extern "C" fn wasmi_config_set_max_recursion_depth(config: &mut wasm_config_t, value: usize) {
     config.inner.set_max_recursion_depth(value);
 }
 

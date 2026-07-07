@@ -40,7 +40,9 @@ WASMI_CONFIG_PROP(void, ignore_custom_sections, bool)
  *
  * An execution traps if it exceeds this limit.
  */
-WASMI_CONFIG_PROP(void, set_max_recursion_depth, size_t)
+// NOTE: declared explicitly (not via WASMI_CONFIG_PROP): the macro appends a
+// `_set` suffix, but the exported symbol is `wasmi_config_set_max_recursion_depth`.
+WASM_API_EXTERN void wasmi_config_set_max_recursion_depth(wasm_config_t *, size_t);
 
 /**
  * \brief Sets the minimum (or initial) height of the engine's value stack in bytes.
@@ -50,7 +52,7 @@ WASMI_CONFIG_PROP(void, set_max_recursion_depth, size_t)
  *
  * Note: Panics if value is greater than the current maximum height of the value stack.
  */
-WASMI_CONFIG_PROP(void, set_min_stack_height, size_t)
+WASM_API_EXTERN void wasmi_config_set_min_stack_height(wasm_config_t *, size_t);
 
 /**
  * \brief Sets the maximum height of the engine's value stack in bytes.
@@ -59,7 +61,7 @@ WASMI_CONFIG_PROP(void, set_min_stack_height, size_t)
  *
  * Note: Panics if value is less than the current minimum height of the value stack.
  */
-WASMI_CONFIG_PROP(void, set_max_stack_height, size_t)
+WASM_API_EXTERN void wasmi_config_set_max_stack_height(wasm_config_t *, size_t);
 
 /**
  * \brief Sets the maximum number of cached stacks for reuse.
@@ -155,24 +157,6 @@ WASMI_CONFIG_PROP(void, wasm_memory64, bool)
 WASMI_CONFIG_PROP(void, wasm_wide_arithmetic, bool)
 
 /**
- * \brief Whether or not to Wasm simd proposal is enabled.
- *
- * Only available when compiled with the `simd` feature.
- *
- * Default value: `true` (when feature enabled)
- */
-WASMI_CONFIG_PROP(void, wasm_simd, bool)
-
-/**
- * \brief Whether or not to Wasm relaxed-simd proposal is enabled.
- *
- * Only available when compiled with the `simd` feature.
- *
- * Default value: `true` (when feature enabled)
- */
-WASMI_CONFIG_PROP(void, wasm_relaxed_simd, bool)
-
-/**
  * \brief Whether or not to floating Wasm point types and operations are
  * enabled.
  *
@@ -183,23 +167,26 @@ WASMI_CONFIG_PROP(void, floats, bool)
 /**
  * \brief Different ways Wasmi can compile Wasm bytecode into Wasmi bytecode.
  *
- * The default value is #WASMI_COMPILATION_MODE_EAGER.
+ * The default value is #WASMI_COMPILATION_MODE_LAZY_TRANSLATION.
+ *
+ * \note The enumerator order must match `wasmi::CompilationMode` (and the
+ * `wasmi_compilation_mode_t` enum in `config.rs`), since values are passed by
+ * their integer discriminant across the C ABI.
  */
 enum wasmi_compilation_mode_enum {
   /// Wasmi compiles and validates Wasm bytecode eagerly.
   WASMI_COMPILATION_MODE_EAGER,
-  /// Wasmi compiles and validates Wasm bytecode upon first use.
-  WASMI_COMPILATION_MODE_LAZY,
   /// Wasmi compiles Wasm bytecode upon first use but validates Wasm bytecode
   /// eagerly.
   WASMI_COMPILATION_MODE_LAZY_TRANSLATION,
+  /// Wasmi compiles and validates Wasm bytecode upon first use.
+  WASMI_COMPILATION_MODE_LAZY,
 };
 
 /**
- * \brief Whether or not to floating Wasm point types and operations are
- * enabled.
+ * \brief Sets how Wasmi compiles Wasm bytecode; see #wasmi_compilation_mode_enum.
  *
- * Default value: #WASMI_COMPILATION_MODE_EAGER
+ * Default value: #WASMI_COMPILATION_MODE_LAZY_TRANSLATION.
  */
 WASMI_CONFIG_PROP(void, compilation_mode, enum wasmi_compilation_mode_enum)
 

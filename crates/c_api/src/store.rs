@@ -86,7 +86,14 @@ pub extern "C" fn wasm_store_new(engine: &wasm_engine_t) -> Box<wasm_store_t> {
 /// This function creates a store with resource limits suitable for blockchain smart contracts.
 /// The memory limit is enforced during WebAssembly execution.
 ///
-/// If `max_pages` exceeds 1024 (64MB), this function will panic.
+/// If `max_pages` exceeds 1024 (64MB), this function returns `NULL`.
+///
+/// # Note
+///
+/// Returning `NULL` (instead of panicking) is deliberate: this function is part
+/// of the `extern "C"` boundary, and a panic here would unwind out of `extern
+/// "C"` and abort the whole process. For a consensus binary an out-of-range
+/// argument must be a recoverable `NULL`, never a validator crash.
 ///
 /// The returned [`wasm_store_t`] must be freed using [`wasm_store_delete`].
 ///
@@ -97,10 +104,10 @@ pub extern "C" fn wasm_store_new(engine: &wasm_engine_t) -> Box<wasm_store_t> {
 pub extern "C" fn wasm_store_new_with_memory_max_pages(
     engine: &wasm_engine_t,
     max_pages: u32,
-) -> Box<wasm_store_t> {
-    // Validate max_pages limit (64MB = 1024 pages)
+) -> Option<Box<wasm_store_t>> {
+    // Validate max_pages limit (64MB = 1024 pages).
     if max_pages > 1024 {
-        panic!("max_pages ({}) exceeds maximum allowed value of 1024 pages (64MB)", max_pages);
+        return None;
     }
 
     // Convert pages to bytes (each page is 64KB)
@@ -121,11 +128,11 @@ pub extern "C" fn wasm_store_new_with_memory_max_pages(
     // Install the resource limiter
     store.limiter(|limits| limits);
 
-    Box::new(wasm_store_t {
+    Some(Box::new(wasm_store_t {
         inner: WasmStoreRef {
             inner: Arc::new(UnsafeCell::new(store)),
         },
-    })
+    }))
 }
 
 /// The Wasm store with foreign data and optional WASI support.
