@@ -36,6 +36,15 @@ WASMI_CONFIG_PROP(void, consume_fuel, bool)
 WASMI_CONFIG_PROP(void, ignore_custom_sections, bool)
 
 /**
+ * \brief Whether or not Wasm modules that declare a `start` function are allowed.
+ *
+ * When disabled, creating a module that declares a `start` function fails.
+ *
+ * Default value: `true`
+ */
+WASMI_CONFIG_PROP(void, start_fn, bool)
+
+/**
  * \brief Sets the maximum recursion depth of the engine's stack during execution.
  *
  * An execution traps if it exceeds this limit.

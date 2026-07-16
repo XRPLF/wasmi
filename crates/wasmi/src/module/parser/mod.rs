@@ -7,6 +7,7 @@ use super::{
     CustomSectionsBuilder,
     ElementSegment,
     FuncIdx,
+    InstantiationError,
     ModuleBuilder,
     ModuleHeader,
 };
@@ -320,6 +321,15 @@ impl ModuleParser {
     ) -> Result<(), Error> {
         if let Some(validator) = &mut self.validator {
             validator.start_section(func, &range)?;
+        }
+        // Note: spec validation runs *before* the `start_fn` policy check on
+        // purpose. A malformed start section (bad index or wrong signature)
+        // must fail with its proper validation error regardless of the policy,
+        // so structural validity is judged independently of `start_fn`. Only a
+        // well-formed-but-present start function reaches the rejection below,
+        // and the reported `index` is a validated one.
+        if !self.engine.config().get_start_fn() {
+            return Err(InstantiationError::UnexpectedStartFn { index: func }.into());
         }
         header.set_start(FuncIdx::from(func));
         Ok(())

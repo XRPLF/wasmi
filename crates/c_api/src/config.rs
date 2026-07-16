@@ -167,6 +167,16 @@ pub extern "C" fn wasmi_config_consume_fuel_set(config: &mut wasm_config_t, enab
     config.inner.consume_fuel(enable);
 }
 
+/// Enables or disables support for Wasm modules that declare a `start` function.
+///
+/// When disabled, parsing a module that declares a `start` function fails.
+///
+/// Wraps [`wasmi::Config::start_fn`]
+#[no_mangle]
+pub extern "C" fn wasmi_config_start_fn_set(config: &mut wasm_config_t, enable: bool) {
+    config.inner.start_fn(enable);
+}
+
 /// Compilation modes supported by the Wasmi execution engine.
 ///
 /// Wraps [`wasmi::CompilationMode`]
